@@ -10,8 +10,12 @@ from util import *
 async def hello(update, context):
     if dialog.mode == "gpt":
         await gpt_dialog(update, context)
+    elif dialog.mode == "profile":
+        await profile_dialog(update, context)
     elif dialog.mode == "date":
         await date_dialog(update, context)
+    elif dialog.mode == "opener":
+        await opener_dialog(update, context)
     elif dialog.mode == "message":
         await message_dialog(update, context)
     else:
@@ -41,19 +45,34 @@ async def start(update, context):
 
 
 
-async def hello_button(update, context):
-    dialog.mode = "main"
-    query = update.callback_query.data  # код кнопки
-    await update.callback_query.answer()  # помечаем что обработали нажатие на кнопку
-    await send_text(update, context, "Вы нажали на кнопку " + query)
-
-
 # GPT
 async def gpt(update, context):
     dialog.mode = "gpt"
     await send_photo(update, context, "gpt")
     await send_text(update, context, "Напишите сообщение *ChatGPT*:")
 
+
+# PROFILE
+async def profile(update, context):
+    dialog.mode = "profile"
+    text = load_message("profile")
+    await send_photo(update, context, "profile")
+    await send_text(update, context, text)
+
+    dialog.user.clear()
+    dialog.count = 0
+    await send_text(update, context, "Сколько вам лет?")
+
+
+async def opener(update, context):
+    dialog.mode = "opener"
+    text = load_message("opener")
+    await send_photo(update, context, "opener")
+    await send_text(update, context, text)
+
+    dialog.user.clear()
+    dialog.count = 0
+    await send_text(update, context, "Как тебя зовут?")
 
 # DATE
 async def date(update, context):
@@ -89,6 +108,58 @@ async def gpt_dialog(update, context):
     text = update.message.text
     answer = await chatgpt.send_question(prompt, text)
     await my_message.edit_text(answer)
+
+
+# dialogs
+async def profile_dialog(update, context):
+    text = update.message.text
+    dialog.count += 1
+
+    if dialog.count == 1:
+        dialog.user["age"] = text
+        await send_text(update, context, "Кем вы работаете?")
+    elif dialog.count == 2:
+        dialog.user["occupation"] = text
+        await send_text(update, context, "У вас есть хобби?")
+    elif dialog.count == 3:
+        dialog.user["hobby"] = text
+        await send_text(update, context, "Что вам НЕ нравится в людях?")
+    elif dialog.count == 4:
+        dialog.user["annoys"] = text
+        await send_text(update, context, "Цель знакомства?")
+    elif dialog.count == 5:
+        dialog.user["goals"] = text
+
+    prompt = load_prompt("profile")
+    user_info = dialog_user_info_to_str(dialog.user)
+    answer = await chatgpt.send_question(prompt, user_info)
+    await send_text(update, context, answer)
+
+
+async def opener_dialog(update, context):
+    text = update.message.text
+    dialog.count += 1
+
+    if dialog.count == 1:
+        dialog.user["name"] = text
+        await send_text(update, context, "Сколько лет?")
+    elif dialog.count == 2:
+        dialog.user["occupation"] = text
+        await send_text(update, context, "Внешность 1-10 баллов?")
+    elif dialog.count == 3:
+        dialog.user["hobby"] = text
+        await send_text(update, context, "Кем работаешь?")
+    elif dialog.count == 4:
+        dialog.user["annoys"] = text
+        await send_text(update, context, "Цель знакомства?")
+    elif dialog.count == 5:
+        dialog.user["goals"] = text
+
+    prompt = load_prompt("opener")
+    user_info = dialog_user_info_to_str(dialog.user)
+    answer = await chatgpt.send_question(prompt, user_info)
+    await send_text(update, context, answer)
+
 
 
 async def date_dialog(update, context):
@@ -150,6 +221,8 @@ TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 dialog = Dialog()
 dialog.mode = None
 dialog.list = []
+dialog.user = {}
+dialog.count = 0
 
 
 chatgpt = ChatGptService(token=OPEN_API_TOKEN)
@@ -158,6 +231,8 @@ app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
 app.add_handler(CommandHandler("start", start))
 app.add_handler(CommandHandler("gpt", gpt))
+app.add_handler(CommandHandler("profile", profile))
+app.add_handler(CommandHandler("opener", opener))
 app.add_handler(CommandHandler("date", date))
 app.add_handler(CommandHandler("message", message))
 
