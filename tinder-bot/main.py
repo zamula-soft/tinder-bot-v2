@@ -3,8 +3,8 @@ from dotenv import load_dotenv
 
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, CallbackQueryHandler, CommandHandler
 
-from gpt import *
-from util import *
+from classes.gpt import *
+from classes.util import *
 
 
 async def hello(update, context):
@@ -219,10 +219,6 @@ OPEN_API_TOKEN = os.getenv("OPEN_API_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
 dialog = Dialog()
-dialog.mode = None
-dialog.list = []
-dialog.user = {}
-dialog.count = 0
 
 
 chatgpt = ChatGptService(token=OPEN_API_TOKEN)
