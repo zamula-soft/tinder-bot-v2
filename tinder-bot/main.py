@@ -7,6 +7,8 @@ from telegram.ext import ApplicationBuilder, MessageHandler, filters, CallbackQu
 from classes.gpt import *
 from classes.util import *
 
+load_dotenv()
+
 
 class TelegramBot:
     def __init__(self):
@@ -252,13 +254,14 @@ class OpenerProperty(Property):
         await send_text(update, context, answer)
 
 
-load_dotenv()
+if __name__ == '__main__':
+    OPEN_API_TOKEN = os.getenv("OPEN_API_TOKEN")
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    chatgpt = ChatGptService(token=OPEN_API_TOKEN)
 
-OPEN_API_TOKEN = os.getenv("OPEN_API_TOKEN")
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-chatgpt = ChatGptService(token=OPEN_API_TOKEN)
-bot = TelegramBot()
+    app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
 
-app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-bot.add_handlers(app)
-app.run_polling()
+    bot = TelegramBot()
+    bot.add_handlers(app)
+
+    app.run_polling()
