@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+from abc import abstractmethod
 
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, CallbackQueryHandler, CommandHandler
 
@@ -18,15 +19,15 @@ class TelegramBot:
 
     async def hello(self, update, context):
         if self.dialog.mode == "gpt":
-            await self.gpt_property.gpt_dialog(update, context)
+            await self.gpt_property.get_dialog(update, context)
         elif self.dialog.mode == "profile":
-            await self.profile_property.profile_dialog(update, context)
+            await self.profile_property.get_dialog(update, context)
         elif self.dialog.mode == "date":
-            await self.date_property.date_dialog(update, context)
+            await self.date_property.get_dialog(update, context)
         elif self.dialog.mode == "opener":
-            await self.opener_property.opener_dialog(update, context)
+            await self.opener_property.get_dialog(update, context)
         elif self.dialog.mode == "message":
-            await self.messages_property.message_dialog(update, context)
+            await self.messages_property.get_dialog(update, context)
         else:
             await send_text(update, context, "Привет!")
             await send_text(update, context, "Как дела, *дружище*?")
@@ -61,33 +62,41 @@ class TelegramBot:
             "gpt": "задать вопрос ChatGPT  🧠",
         })
 
-    def add_handlers(self, app):
+    def add_handlers(self, app_instance):
         """Handlers for telegram."""
 
-        app.add_handler(CommandHandler("start", self.start))
-        app.add_handler(CommandHandler("gpt", self.gpt_property.gpt))
-        app.add_handler(CommandHandler("profile", self.profile_property.profile))
-        app.add_handler(CommandHandler("opener", self.opener_property.opener))
-        app.add_handler(CommandHandler("date", self.date_property.date))
-        app.add_handler(CommandHandler("message", self.messages_property.message))
+        app_instance.add_handler(CommandHandler("start", self.start))
+        app_instance.add_handler(CommandHandler("gpt", self.gpt_property.handler))
+        app_instance.add_handler(CommandHandler("profile", self.profile_property.handler))
+        app_instance.add_handler(CommandHandler("opener", self.opener_property.handler))
+        app_instance.add_handler(CommandHandler("date", self.date_property.handler))
+        app_instance.add_handler(CommandHandler("message", self.messages_property.handler))
 
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.hello))  # отключаем команды
+        app_instance.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, self.hello))  # отключаем команды
 
-        app.add_handler(CallbackQueryHandler(self.date_property.date_button, pattern="^date_.*"))
-        app.add_handler(CallbackQueryHandler(self.messages_property.message_button, pattern="^message_.*"))
+        app_instance.add_handler(CallbackQueryHandler(self.date_property.date_button, pattern="^date_.*"))
+        app_instance.add_handler(CallbackQueryHandler(self.messages_property.message_button, pattern="^message_.*"))
 
-        app.add_handler(CallbackQueryHandler(self.hello_button))
+        app_instance.add_handler(CallbackQueryHandler(self.hello_button))
 
 
 class Property:
     def __init__(self, dialog):
         self.dialog = dialog
 
+    @abstractmethod
+    async def handler(self, update, context):
+        raise NotImplemented
+
+    @abstractmethod
+    async def get_dialog(self, update, context):
+        raise NotImplemented
+
 
 class MessageProperty(Property):
     """Message property"""
 
-    async def message(self, update, context):
+    async def handler(self, update, context):
         self.dialog.mode = "message"
         text = load_message("message")
         await send_photo(update, context, "message")
@@ -98,7 +107,7 @@ class MessageProperty(Property):
         })
         self.dialog.list.clear()
 
-    async def message_dialog(self, update, context):
+    async def get_dialog(self, update, context):
         text = update.message.text
         self.dialog.list.append(text)
 
@@ -116,7 +125,7 @@ class MessageProperty(Property):
 class DateProperty(Property):
     """Date property of the bot."""
 
-    async def date(self, update, context):
+    async def handler(self, update, context):
         self.dialog.mode = "date"
         await send_text(update, context, "date")
         text = load_message("date")
@@ -143,8 +152,7 @@ class DateProperty(Property):
 
         # await send_html(update, context, query)
 
-    @staticmethod
-    async def date_dialog(update, context):
+    async def get_dialog(self, update, context):
         # Диалог
         text = update.message.text
         my_message = await send_text(update, context, "Девушка набирает текст...")
@@ -155,13 +163,12 @@ class DateProperty(Property):
 class GPTProperty(Property):
     """GPT Property"""
 
-    async def gpt(self, update, context):
+    async def handler(self, update, context):
         self.dialog.mode = "gpt"
         await send_photo(update, context, "gpt")
         await send_text(update, context, "Напишите сообщение *ChatGPT*:")
 
-    @staticmethod
-    async def gpt_dialog(update, context):
+    async def get_dialog(self, update, context):
         my_message = await send_text(update, context, "ChatGPT думает. Ожидайте...")
         prompt = load_prompt("gpt")
         text = update.message.text
@@ -172,7 +179,7 @@ class GPTProperty(Property):
 class ProfileProperty(Property):
     """Profile property"""
 
-    async def profile(self, update, context):
+    async def handler(self, update, context):
         self.dialog.mode = "profile"
         text = load_message("profile")
         await send_photo(update, context, "profile")
@@ -182,7 +189,7 @@ class ProfileProperty(Property):
         self.dialog.count = 0
         await send_text(update, context, "Сколько вам лет?")
 
-    async def profile_dialog(self, update, context):
+    async def get_dialog(self, update, context):
         text = update.message.text
         self.dialog.count += 1
 
@@ -210,7 +217,7 @@ class ProfileProperty(Property):
 class OpenerProperty(Property):
     """Opener profile."""
 
-    async def opener(self, update, context):
+    async def handler(self, update, context):
         self.dialog.mode = "opener"
         text = load_message("opener")
         await send_photo(update, context, "opener")
@@ -220,7 +227,7 @@ class OpenerProperty(Property):
         self.dialog.count = 0
         await send_text(update, context, "Как тебя зовут?")
 
-    async def opener_dialog(self, update, context):
+    async def get_dialog(self, update, context):
         text = update.message.text
         self.dialog.count += 1
 
