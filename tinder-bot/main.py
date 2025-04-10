@@ -28,7 +28,6 @@ async def hello(update, context):
             "stop": "Остановить"
         })
 
-
 async def start(update, context):
     dialog.mode = "main"
     text = load_message("main")
@@ -43,14 +42,11 @@ async def start(update, context):
         "gpt": "задать вопрос ChatGPT  🧠",
     })
 
-
-
 # GPT
 async def gpt(update, context):
     dialog.mode = "gpt"
     await send_photo(update, context, "gpt")
     await send_text(update, context, "Напишите сообщение *ChatGPT*:")
-
 
 # PROFILE
 async def profile(update, context):
@@ -62,7 +58,6 @@ async def profile(update, context):
     dialog.user.clear()
     dialog.count = 0
     await send_text(update, context, "Сколько вам лет?")
-
 
 async def opener(update, context):
     dialog.mode = "opener"
@@ -88,7 +83,6 @@ async def date(update, context):
     })
     await send_photo(update, context, "date")
 
-
 async def message(update, context):
     dialog.mode = "message"
     text = load_message("message")
@@ -100,7 +94,6 @@ async def message(update, context):
     })
     dialog.list.clear()
 
-
 # dialogs
 async def gpt_dialog(update, context):
     my_message = await send_text(update, context, "ChatGPT думает. Ожидайте...")
@@ -108,7 +101,6 @@ async def gpt_dialog(update, context):
     text = update.message.text
     answer = await chatgpt.send_question(prompt, text)
     await my_message.edit_text(answer)
-
 
 # dialogs
 async def profile_dialog(update, context):
@@ -135,7 +127,6 @@ async def profile_dialog(update, context):
     answer = await chatgpt.send_question(prompt, user_info)
     await send_text(update, context, answer)
 
-
 async def opener_dialog(update, context):
     text = update.message.text
     dialog.count += 1
@@ -160,8 +151,6 @@ async def opener_dialog(update, context):
     answer = await chatgpt.send_question(prompt, user_info)
     await send_text(update, context, answer)
 
-
-
 async def date_dialog(update, context):
     # Диалог
     text = update.message.text
@@ -169,11 +158,9 @@ async def date_dialog(update, context):
     answer = await chatgpt.add_message(text)
     await my_message.edit_text(answer)
 
-
 async def message_dialog(update, context):
     text = update.message.text
     dialog.list.append(text)
-
 
 # Buttons
 async def hello_button(update, context):
@@ -184,7 +171,6 @@ async def hello_button(update, context):
         await send_text(update, context, "Процесс запущен")
     else:
         await send_text(update, context, "Процесс остановлен")
-
 
 async def date_button(update, context):
     # Обработчик
@@ -199,7 +185,6 @@ async def date_button(update, context):
 
     # await send_html(update, context, query)
 
-
 async def message_button(update, context):
     query = update.callback_query.data
     await update.callback_query.answer()
@@ -211,31 +196,32 @@ async def message_button(update, context):
     await my_message.edit_text(answer)
 
 
+def add_handlers(app):
+    """Handlers for telegram."""
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("gpt", gpt))
+    app.add_handler(CommandHandler("profile", profile))
+    app.add_handler(CommandHandler("opener", opener))
+    app.add_handler(CommandHandler("date", date))
+    app.add_handler(CommandHandler("message", message))
+
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hello))  # отключаем команды
+
+    app.add_handler(CallbackQueryHandler(date_button, pattern="^date_.*"))
+    app.add_handler(CallbackQueryHandler(message_button, pattern="^message_.*"))
+
+    app.add_handler(CallbackQueryHandler(hello_button))
 
 
 load_dotenv()
 
 OPEN_API_TOKEN = os.getenv("OPEN_API_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+chatgpt = ChatGptService(token=OPEN_API_TOKEN)
 
 dialog = Dialog()
 
-
-chatgpt = ChatGptService(token=OPEN_API_TOKEN)
-
 app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
-
-app.add_handler(CommandHandler("start", start))
-app.add_handler(CommandHandler("gpt", gpt))
-app.add_handler(CommandHandler("profile", profile))
-app.add_handler(CommandHandler("opener", opener))
-app.add_handler(CommandHandler("date", date))
-app.add_handler(CommandHandler("message", message))
-
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, hello))  # отключаем команды
-
-app.add_handler(CallbackQueryHandler(date_button, pattern="^date_.*"))
-app.add_handler(CallbackQueryHandler(message_button, pattern="^message_.*"))
-
-app.add_handler(CallbackQueryHandler(hello_button))
+add_handlers(app)
 app.run_polling()
